@@ -7,6 +7,8 @@ import { BadRequestError, NotFoundError, UserForbiddenError } from "./errors";
 
 import path from 'node:path';
 
+const { randomBytes } = await import('node:crypto');
+
 type Thumbnail = {
   data: ArrayBuffer;
   mediaType: string;
@@ -37,11 +39,14 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
   if (!video) throw new NotFoundError("Couldn't find video");
   if (video.userID != userID) throw new UserForbiddenError("User is not authenticated");
 
+  const buf = randomBytes(32);
+  const fileName = buf.toString("base64url");
+  
   const fileExtension = mediaType.split("/")[1];
-  const filePath = path.join(cfg.assetsRoot, `${video.id}.${fileExtension}`);
+  const filePath = path.join(cfg.assetsRoot, `${fileName}.${fileExtension}`);
   await Bun.write(filePath, thumbnail);
 
-  video.thumbnailURL = `http://localhost:${cfg.port}/assets/${video.id}.${fileExtension}`;
+  video.thumbnailURL = `http://localhost:${cfg.port}/assets/${fileName}.${fileExtension}`;
   updateVideo(cfg.db, video);
 
   return respondWithJSON(200, video);
